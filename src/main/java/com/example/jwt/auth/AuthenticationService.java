@@ -26,6 +26,8 @@ public class AuthenticationService {
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     public AuthenticationTokenResponse register(RegisterRequest request) {
+
+
         var user = User.builder()
                 .firstname(request.getFirstname())
                 .lastname(request.getLastname())
