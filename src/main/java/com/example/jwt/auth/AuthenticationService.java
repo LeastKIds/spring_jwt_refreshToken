@@ -7,6 +7,8 @@ import com.example.jwt.error.RefreshTokenErrorResponse;
 import com.example.jwt.user.Role;
 import com.example.jwt.user.User;
 import com.example.jwt.user.UserRepository;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +17,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.ErrorResponse;
+
+import java.security.SignatureException;
 
 @Service
 @RequiredArgsConstructor
@@ -71,12 +75,23 @@ public class AuthenticationService {
                 .build();
     }
 
-    public RefreshTokenInterface getAccessToken(String refreshToken) throws Exception {
+    public RefreshTokenInterface getAccessToken(String refreshToken) throws RuntimeException {
+        // 헤더에 jwt토큰임을 알리는 Bearer가 앞에 존재하는지
         if(!refreshToken.startsWith("Bearer ")) {
             return RefreshTokenErrorResponse.builder().error("Invalid token format").build();
         }
+        // Bearer을 제거한 순수 토큰
         String jwt = refreshToken.substring(7);
-        String userEmail = jwtService.extractRefreshTokenUsername(jwt);
+
+        String userEmail;
+        try {
+            userEmail = jwtService.extractRefreshTokenUsername(jwt);
+        } catch (ExpiredJwtException e) {
+            return RefreshTokenErrorResponse.builder().error("The token is expired").build();
+        } catch (JwtException e) {
+            return RefreshTokenErrorResponse.builder().error("The token is invalid").build();
+        }
+
 
         var refresh = refreshTokenRepository.findByUserEmail(userEmail);
         if(refresh.isEmpty()) {
@@ -90,8 +105,6 @@ public class AuthenticationService {
         } else {
             return RefreshTokenErrorResponse.builder().error("The token values do not match.").build();
         }
-
-
     }
 
 }

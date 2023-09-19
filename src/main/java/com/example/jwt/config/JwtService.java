@@ -1,10 +1,9 @@
 package com.example.jwt.config;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import org.slf4j.Logger;
@@ -114,21 +113,23 @@ public class JwtService {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String extractRefreshTokenUsername(String token) {
+    public String extractRefreshTokenUsername(String token) throws RuntimeException {
         return extractRefreshTokenClaims(token, Claims::getSubject);
     }
 
-    public <T> T extractRefreshTokenClaims(String token, Function<Claims, T> claimsResolver) {
+    public <T> T extractRefreshTokenClaims(String token, Function<Claims, T> claimsResolver) throws RuntimeException {
         final Claims claims = extractRefreshTokenAllClaims(token);
         return claimsResolver.apply(claims);
     }
 
-    private Claims extractRefreshTokenAllClaims(String token) {
-        return  Jwts
+    private Claims extractRefreshTokenAllClaims(String token) throws RuntimeException{
+
+        return Jwts
                 .parserBuilder()
                 .setSigningKey(getRefreshTokenSignInKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
+
     }
 }
