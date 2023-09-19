@@ -102,7 +102,8 @@ public class AuthenticationService {
             var user = repository.findByEmail(userEmail)
                     .orElseThrow();
             var accessToken = jwtService.generateToken(user);
-            return AuthenticationResponse.builder().token(accessToken).build();
+            var reGenerateRefreshToken = jwtService.generateRefreshToken(user);
+            return AuthenticationTokenResponse.builder().token(accessToken).refreshToken(reGenerateRefreshToken).build();
         } else {
             return RefreshTokenErrorResponse.builder().error("The token values do not match.").build();
         }

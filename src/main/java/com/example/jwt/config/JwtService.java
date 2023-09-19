@@ -87,6 +87,7 @@ public class JwtService {
     public String generateRefreshToken(Map<String, Object> extraClaims, UserDetails userDetails) {
         var date = new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 14);
 
+
         String refreshToken = Jwts
                 .builder()
                 .setClaims(extraClaims)
@@ -96,13 +97,20 @@ public class JwtService {
                 .signWith(getRefreshTokenSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
 
-       var rf = RefreshToken.builder()
-               .token(encrypt(refreshToken))
-               .userEmail(userDetails.getUsername())
-               .expirationTime(date)
-               .build();
+        var token = encrypt(refreshToken);
+        if(refreshTokenRepository.findByUserEmail(userDetails.getUsername()).isPresent()) {
+            var user = refreshTokenRepository.findByUserEmail(userDetails.getUsername()).get();
+            user.setToken(token);
+            refreshTokenRepository.save(user);
+        } else {
+            var rf = RefreshToken.builder()
+                    .token(token)
+                    .userEmail(userDetails.getUsername())
+                    .expirationTime(date)
+                    .build();
+            refreshTokenRepository.save(rf);
+        }
 
-        refreshTokenRepository.save(rf);
 
         return refreshToken;
     }

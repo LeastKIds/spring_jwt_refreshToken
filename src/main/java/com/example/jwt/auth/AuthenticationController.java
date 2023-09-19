@@ -31,7 +31,6 @@ public class AuthenticationController {
             // 에러 응답일 경우
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         }
-
         // 정상 응답일 경우
         return ResponseEntity.ok(response);
     }
