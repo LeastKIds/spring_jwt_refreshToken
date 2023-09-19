@@ -17,6 +17,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
+import static com.example.jwt.util.AES.AESUtil.encrypt;
+
 @Service
 @AllArgsConstructor
 public class JwtService {
@@ -95,7 +97,7 @@ public class JwtService {
                 .compact();
 
        var rf = RefreshToken.builder()
-               .token(refreshToken)
+               .token(encrypt(refreshToken))
                .userEmail(userDetails.getUsername())
                .expirationTime(date)
                .build();

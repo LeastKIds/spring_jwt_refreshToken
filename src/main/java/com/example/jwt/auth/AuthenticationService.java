@@ -20,6 +20,8 @@ import org.springframework.web.ErrorResponse;
 
 import java.security.SignatureException;
 
+import static com.example.jwt.util.AES.AESUtil.decrypt;
+
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
@@ -92,12 +94,11 @@ public class AuthenticationService {
             return RefreshTokenErrorResponse.builder().error("The token is invalid").build();
         }
 
-
         var refresh = refreshTokenRepository.findByUserEmail(userEmail);
         if(refresh.isEmpty()) {
             return RefreshTokenErrorResponse.builder().error("This user does not possess a token.").build();
         }
-        if(jwt.equals(refresh.get().getToken())) {
+        if(jwt.equals(decrypt(refresh.get().getToken()))) {
             var user = repository.findByEmail(userEmail)
                     .orElseThrow();
             var accessToken = jwtService.generateToken(user);
