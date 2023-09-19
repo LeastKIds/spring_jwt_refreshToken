@@ -2,13 +2,17 @@ package com.example.jwt.auth;
 
 import com.example.jwt.config.JwtAuthenticationFilter;
 import com.example.jwt.config.JwtService;
+import com.example.jwt.config.RefreshToken;
 import com.example.jwt.config.RefreshTokenRepository;
+import com.example.jwt.error.LogoutErrorResponse;
 import com.example.jwt.error.RefreshTokenErrorResponse;
+import com.example.jwt.redis.RedisService;
 import com.example.jwt.user.Role;
 import com.example.jwt.user.User;
 import com.example.jwt.user.UserRepository;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,8 +23,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.ErrorResponse;
 
 import java.security.SignatureException;
+import java.util.Date;
 
 import static com.example.jwt.util.AES.AESUtil.decrypt;
+import static com.example.jwt.util.AES.AESUtil.encrypt;
 
 @Service
 @RequiredArgsConstructor
@@ -31,7 +37,7 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
 
     private final JwtService jwtService;
-
+    private final RedisService redisService;
 
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
@@ -77,7 +83,49 @@ public class AuthenticationService {
                 .build();
     }
 
-    public RefreshTokenInterface getAccessToken(String refreshToken) throws RuntimeException {
+    @Transactional
+    public LogoutInterface logout(AuthenticationTokenResponse tokens) throws RuntimeException{
+        String accessToken = tokens.getToken();
+        String refreshToken = tokens.getRefreshToken();
+
+        if(!accessToken.startsWith("Bearer ") || !refreshToken.startsWith("Bearer ")) {
+            return LogoutErrorResponse.builder().error("Invalid token format").build();
+        }
+        String accessJwt = accessToken.substring(7);
+        String refreshJwt = refreshToken.substring(7);
+
+        String userEmail;
+        try {
+            userEmail = jwtService.extractRefreshTokenUsername(refreshJwt);
+        } catch (ExpiredJwtException e) {
+            return LogoutErrorResponse.builder().error("The token is expired").build();
+        } catch (JwtException e) {
+            return LogoutErrorResponse.builder().error("The token is invalid").build();
+        }
+
+        if(refreshTokenRepository.findByToken(encrypt(refreshJwt)).isEmpty()) {
+            return LogoutErrorResponse.builder().error("This refresh token is not in the storage").build();
+        }
+
+
+
+        RefreshToken reToken = refreshTokenRepository.findByToken(encrypt(refreshJwt)).get();
+        refreshTokenRepository.delete(reToken);
+
+        Date expirationDate = jwtService.extractExpiration(accessJwt);
+        Date currentDate = new Date();
+        long differenceInMilliseconds = expirationDate.getTime() - currentDate.getTime();
+        if (differenceInMilliseconds < 0) {
+            // This means the token has already expired.
+            differenceInMilliseconds = 0;
+        }
+
+        redisService.setBlackList(encrypt(accessJwt), userEmail, differenceInMilliseconds);
+        return LogoutResponse.builder().status(true).build();
+
+    }
+
+    public RefreshTokenInterface getAccessToken(String refreshToken) {
         // 헤더에 jwt토큰임을 알리는 Bearer가 앞에 존재하는지
         if(!refreshToken.startsWith("Bearer ")) {
             return RefreshTokenErrorResponse.builder().error("Invalid token format").build();

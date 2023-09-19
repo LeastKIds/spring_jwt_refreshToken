@@ -1,5 +1,6 @@
 package com.example.jwt.auth;
 
+import com.example.jwt.error.LogoutErrorResponse;
 import com.example.jwt.error.RefreshTokenErrorResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,8 +24,19 @@ public class AuthenticationController {
         return ResponseEntity.ok(service.authenticate(request));
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<LogoutInterface> logout(@RequestHeader("Refresh-Token") String refreshToken, @RequestHeader("Authorization") String accessToken ) {
+        LogoutInterface response = service.logout(AuthenticationTokenResponse.builder().token(accessToken).refreshToken(refreshToken).build());
+        if (response instanceof LogoutErrorResponse) {
+            // 에러 응답일 경우
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+        // 정상 응답일 경우
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/getAccessToken")
-    public ResponseEntity<RefreshTokenInterface> getAccessToken(@RequestHeader("Refresh-Token") String refreshToken) throws Exception {
+    public ResponseEntity<RefreshTokenInterface> getAccessToken(@RequestHeader("Refresh-Token") String refreshToken) {
         RefreshTokenInterface response = service.getAccessToken(refreshToken);
 
         if (response instanceof RefreshTokenErrorResponse) {

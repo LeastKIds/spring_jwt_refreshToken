@@ -3,9 +3,7 @@ package com.example.jwt.config;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import io.jsonwebtoken.security.SignatureException;
 import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -55,7 +53,7 @@ public class JwtService {
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000))
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 30 * 60))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -70,10 +68,10 @@ public class JwtService {
     }
 
     private boolean isTokenExpired(String token) {
-        return extractExpriation(token).before(new Date());
+        return extractExpiration(token).before(new Date());
     }
 
-    private Date extractExpriation(String token) {
+    public Date extractExpiration(String token) {
         return extractClaims(token, Claims::getExpiration);
     }
 

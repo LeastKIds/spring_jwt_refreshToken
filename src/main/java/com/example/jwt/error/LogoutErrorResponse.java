@@ -1,7 +1,6 @@
 package com.example.jwt.error;
 
 import com.example.jwt.auth.LogoutInterface;
-import com.example.jwt.auth.RefreshTokenInterface;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,6 +10,6 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class RefreshTokenErrorResponse implements RefreshTokenInterface {
+public class LogoutErrorResponse implements LogoutInterface {
     private String error;
 }

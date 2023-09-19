@@ -1,5 +1,6 @@
 package com.example.jwt.config;
 
+import com.example.jwt.redis.RedisService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,11 +19,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
+import static com.example.jwt.util.AES.AESUtil.encrypt;
+
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final RedisService redisService;
 
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
@@ -48,6 +52,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
         jwt = authHeader.substring(7);
+
+        // redis로 블랙리스트 확인
+        if(redisService.hasKeyBlackList(encrypt(jwt))) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         try {
             userEmail = jwtService.extractUsername(jwt);
         } catch(Exception error) {  // 어세스 토큰 만료 확인
