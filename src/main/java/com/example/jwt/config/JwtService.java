@@ -113,4 +113,22 @@ public class JwtService {
         byte[] keyBytes = Decoders.BASE64.decode((REFRESH_TOKEN_KEY));
         return Keys.hmacShaKeyFor(keyBytes);
     }
+
+    public String extractRefreshTokenUsername(String token) {
+        return extractRefreshTokenClaims(token, Claims::getSubject);
+    }
+
+    public <T> T extractRefreshTokenClaims(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = extractRefreshTokenAllClaims(token);
+        return claimsResolver.apply(claims);
+    }
+
+    private Claims extractRefreshTokenAllClaims(String token) {
+        return  Jwts
+                .parserBuilder()
+                .setSigningKey(getRefreshTokenSignInKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
 }
