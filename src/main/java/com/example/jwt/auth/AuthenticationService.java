@@ -12,7 +12,11 @@ import com.example.jwt.user.User;
 import com.example.jwt.user.UserRepository;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
-import jakarta.transaction.Transactional;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ValidationException;
+import jakarta.validation.Validator;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,10 +24,9 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.ErrorResponse;
 
-import java.security.SignatureException;
 import java.util.Date;
+import java.util.Set;
 
 import static com.example.jwt.util.AES.AESUtil.decrypt;
 import static com.example.jwt.util.AES.AESUtil.encrypt;
@@ -41,6 +44,13 @@ public class AuthenticationService {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
+
+    // validation
+    @Autowired
+    private Validator validator;
+
+
+    @Transactional
     public AuthenticationTokenResponse register(RegisterRequest request) {
 
 
@@ -51,6 +61,15 @@ public class AuthenticationService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(Role.User)
                 .build();
+
+        Set<ConstraintViolation<User>> violations = validator.validate(user);
+        if (!violations.isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            for (ConstraintViolation<User> violation : violations) {
+                sb.append(violation.getMessage()).append("\n");
+            }
+            throw new ValidationException(sb.toString());
+        }
 
 
         repository.save(user);
@@ -64,6 +83,7 @@ public class AuthenticationService {
 
 
     // 로그인 역할
+    @Transactional(readOnly=true)
     public AuthenticationTokenResponse authenticate(AuthenticationRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -125,6 +145,7 @@ public class AuthenticationService {
 
     }
 
+    @Transactional(readOnly=true)
     public RefreshTokenInterface getAccessToken(String refreshToken) {
         // 헤더에 jwt토큰임을 알리는 Bearer가 앞에 존재하는지
         if(!refreshToken.startsWith("Bearer ")) {

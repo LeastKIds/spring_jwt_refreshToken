@@ -1,6 +1,9 @@
 package com.example.jwt.user;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,11 +27,16 @@ public class User implements UserDetails {
     @GeneratedValue
     private Long id;
 
+    @NotBlank(message = "firstname is not blank")
     private String firstname;
+    @NotBlank(message = "lastname is not blank")
     private String lastname;
 
     @Column(unique = true)
+    @Email(message = "Invalid email format.")
     private String email;
+
+    @NotBlank(message = "password is not blank")
     private String password;
 
     private Role role;

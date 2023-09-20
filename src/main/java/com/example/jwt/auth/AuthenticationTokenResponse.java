@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class AuthenticationTokenResponse implements RefreshTokenInterface{
+public class AuthenticationTokenResponse implements RefreshTokenInterface, RegisterInterface{
     private String token;
     private String refreshToken;
 }
