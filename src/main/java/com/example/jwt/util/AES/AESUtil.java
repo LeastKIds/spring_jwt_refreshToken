@@ -1,5 +1,6 @@
 package com.example.jwt.util.AES;
 
+import com.example.jwt.env.AESUtil.AESUtilEnv;
 import com.example.jwt.util.jwt.filter.JwtAuthenticationFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,8 +13,6 @@ import java.util.Base64;
 public class AESUtil {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
-    private static final String SECRET_KEY = "ef03e4280591adb37d0844d9ef1e2db4"; // 16, 24, or 32 characters
-    private static final String INIT_VECTOR = "b07d9ce9bfa38991fc4d467cc638a6c8"; // 16 bytes
 
     public static byte[] hexStringToByteArray(String s) {
         int len = s.length();
@@ -26,9 +25,11 @@ public class AESUtil {
     }
 
     public static String encrypt(String value) {
+        AESUtilEnv aesUtilEnv = new AESUtilEnv();
+
         try {
-            IvParameterSpec iv = new IvParameterSpec(hexStringToByteArray(INIT_VECTOR));
-            SecretKeySpec skeySpec = new SecretKeySpec(hexStringToByteArray(SECRET_KEY), "AES");
+            IvParameterSpec iv = new IvParameterSpec(hexStringToByteArray(aesUtilEnv.getINIT_VECTOR()));
+            SecretKeySpec skeySpec = new SecretKeySpec(hexStringToByteArray(aesUtilEnv.getSECRET_KEY()), "AES");
 
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
             cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);
@@ -43,9 +44,10 @@ public class AESUtil {
     }
 
     public static String decrypt(String encrypted) {
+        AESUtilEnv aesUtilEnv = new AESUtilEnv();
         try {
-            IvParameterSpec iv = new IvParameterSpec(hexStringToByteArray(INIT_VECTOR));
-            SecretKeySpec skeySpec = new SecretKeySpec(hexStringToByteArray(SECRET_KEY), "AES");
+            IvParameterSpec iv = new IvParameterSpec(hexStringToByteArray(aesUtilEnv.getINIT_VECTOR()));
+            SecretKeySpec skeySpec = new SecretKeySpec(hexStringToByteArray(aesUtilEnv.getSECRET_KEY()), "AES");
 
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
             cipher.init(Cipher.DECRYPT_MODE, skeySpec, iv);
