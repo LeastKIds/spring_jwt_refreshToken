@@ -21,14 +21,13 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AuthenticationController {
     private final AuthenticationService service;
-
     @PostMapping("/register")
     public ResponseEntity<RegisterInterface> register(@Validated @RequestBody RegisterRequest request, Errors errors, HttpServletResponse response) {
         if(errors.hasErrors()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponse.builder().error(errors.toString()).build());
         }
 
-        AuthenticationTokenResponse tokenResponse = service.register(request);
+//        AuthenticationTokenResponse tokenResponse = service.register(request);
 
 //        // 쿠키 설정
 //        Cookie jwtTokenCookie = new Cookie("jwtToken", tokenResponse.getToken());
@@ -47,34 +46,21 @@ public class AuthenticationController {
 //        response.addCookie(jwtTokenCookie);
 //        response.addCookie(refreshTokenCookie);
 
-        return ResponseEntity.ok(tokenResponse);
+        return service.register(request);
     }
 
     @PostMapping("/authenticate")
     public ResponseEntity<AuthenticationTokenResponse> authenticate(@RequestBody AuthenticationRequest request) {
-        return ResponseEntity.ok(service.authenticate(request));
+        return service.authenticate(request);
     }
 
     @PostMapping("/logout")
     public ResponseEntity<LogoutInterface> logout(@RequestHeader("Refresh-Token") String refreshToken, @RequestHeader("Authorization") String accessToken ) {
-        LogoutInterface response = service.logout(AuthenticationTokenResponse.builder().token(accessToken).refreshToken(refreshToken).build());
-        if (response instanceof ErrorResponse) {
-            // 에러 응답일 경우
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-        }
-        // 정상 응답일 경우
-        return ResponseEntity.ok(response);
+        return service.logout(AuthenticationTokenResponse.builder().token(accessToken).refreshToken(refreshToken).build());
     }
 
     @PostMapping("/getAccessToken")
     public ResponseEntity<RefreshTokenInterface> getAccessToken(@RequestHeader("Refresh-Token") String refreshToken) {
-        RefreshTokenInterface response = service.getAccessToken(refreshToken);
-
-        if (response instanceof ErrorResponse) {
-            // 에러 응답일 경우
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-        }
-        // 정상 응답일 경우
-        return ResponseEntity.ok(response);
+        return service.getAccessToken(refreshToken);
     }
 }

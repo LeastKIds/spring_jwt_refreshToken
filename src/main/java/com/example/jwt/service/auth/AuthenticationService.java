@@ -1,6 +1,7 @@
 package com.example.jwt.service.auth;
 
 import com.example.jwt.error.ErrorResponse;
+import com.example.jwt.type.i.auth.RegisterInterface;
 import com.example.jwt.util.jwt.filter.JwtAuthenticationFilter;
 import com.example.jwt.util.jwt.service.JwtService;
 import com.example.jwt.util.jwt.domain.RefreshToken;
@@ -21,6 +22,8 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ValidationException;
 import jakarta.validation.Validator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -56,7 +59,7 @@ public class AuthenticationService {
 
 
     @Transactional
-    public AuthenticationTokenResponse register(RegisterRequest request) {
+    public ResponseEntity<RegisterInterface> register(RegisterRequest request) {
 
 
         var user = User.builder()
@@ -83,13 +86,14 @@ public class AuthenticationService {
         // Refresh Token
         var refreshToken = jwtService.generateRefreshToken(user);
 
-        return AuthenticationTokenResponse.builder().token(jwtToken).refreshToken(refreshToken).build();
+//        return AuthenticationTokenResponse.builder().token(jwtToken).refreshToken(refreshToken).build();
+        return ResponseEntity.ok(AuthenticationTokenResponse.builder().token(jwtToken).refreshToken(refreshToken).build());
     }
 
 
     // 로그인 역할
     @Transactional(readOnly=true)
-    public AuthenticationTokenResponse authenticate(AuthenticationRequest request) {
+    public ResponseEntity<AuthenticationTokenResponse> authenticate(AuthenticationRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getEmail(),
@@ -102,19 +106,25 @@ public class AuthenticationService {
         // Refresh Token
         var refreshToken = jwtService.generateRefreshToken(user);
 
-        return AuthenticationTokenResponse.builder()
+        return ResponseEntity.ok(
+                AuthenticationTokenResponse.builder()
                 .token(jwtToken)
                 .refreshToken(refreshToken)
-                .build();
+                .build()
+        );
+
+
     }
 
     @Transactional
-    public LogoutInterface logout(AuthenticationTokenResponse tokens) throws RuntimeException{
+    public ResponseEntity<LogoutInterface> logout(AuthenticationTokenResponse tokens) throws RuntimeException{
         String accessToken = tokens.getToken();
         String refreshToken = tokens.getRefreshToken();
 
         if(!accessToken.startsWith("Bearer ") || !refreshToken.startsWith("Bearer ")) {
-            return ErrorResponse.builder().error("Invalid token format").build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    ErrorResponse.builder().error("Invalid token format").build()
+            );
         }
         String accessJwt = accessToken.substring(7);
         String refreshJwt = refreshToken.substring(7);
@@ -123,13 +133,19 @@ public class AuthenticationService {
         try {
             userEmail = jwtService.extractRefreshTokenUsername(refreshJwt);
         } catch (ExpiredJwtException e) {
-            return ErrorResponse.builder().error("The token is expired").build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    ErrorResponse.builder().error("The token is expired").build()
+            );
         } catch (JwtException e) {
-            return ErrorResponse.builder().error("The token is invalid").build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    ErrorResponse.builder().error("The token is invalid").build()
+            );
         }
 
         if(refreshTokenRepository.findByToken(encrypt(refreshJwt)).isEmpty()) {
-            return ErrorResponse.builder().error("This refresh token is not in the storage").build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    ErrorResponse.builder().error("This refresh token is not in the storage").build()
+            );
         }
 
 
@@ -146,15 +162,17 @@ public class AuthenticationService {
         }
 
         redisService.setBlackList(encrypt(accessJwt), userEmail, differenceInMilliseconds);
-        return LogoutResponse.builder().status(true).build();
+        return ResponseEntity.ok(LogoutResponse.builder().status(true).build());
 
     }
 
-    @Transactional(readOnly=true)
-    public RefreshTokenInterface getAccessToken(String refreshToken) {
+    @Transactional
+    public ResponseEntity<RefreshTokenInterface> getAccessToken(String refreshToken) {
         // 헤더에 jwt토큰임을 알리는 Bearer가 앞에 존재하는지
         if(!refreshToken.startsWith("Bearer ")) {
-            return ErrorResponse.builder().error("Invalid token format").build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    ErrorResponse.builder().error("Invalid token format").build()
+            );
         }
         // Bearer을 제거한 순수 토큰
         String jwt = refreshToken.substring(7);
@@ -163,23 +181,33 @@ public class AuthenticationService {
         try {
             userEmail = jwtService.extractRefreshTokenUsername(jwt);
         } catch (ExpiredJwtException e) {
-            return ErrorResponse.builder().error("The token is expired").build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    ErrorResponse.builder().error("The token is expired").build()
+            );
         } catch (JwtException e) {
-            return ErrorResponse.builder().error("The token is invalid").build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    ErrorResponse.builder().error("The token is invalid").build()
+            );
         }
 
         var refresh = refreshTokenRepository.findByUserEmail(userEmail);
         if(refresh.isEmpty()) {
-            return ErrorResponse.builder().error("This user does not possess a token.").build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    ErrorResponse.builder().error("This user does not possess a token.").build()
+            );
         }
         if(jwt.equals(decrypt(refresh.get().getToken()))) {
             var user = repository.findByEmail(userEmail)
                     .orElseThrow();
             var accessToken = jwtService.generateToken(user);
             var reGenerateRefreshToken = jwtService.generateRefreshToken(user);
-            return AuthenticationTokenResponse.builder().token(accessToken).refreshToken(reGenerateRefreshToken).build();
+            return ResponseEntity.ok(
+                    AuthenticationTokenResponse.builder().token(accessToken).refreshToken(reGenerateRefreshToken).build()
+            );
         } else {
-            return ErrorResponse.builder().error("The token values do not match.").build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    ErrorResponse.builder().error("The token values do not match.").build()
+            );
         }
     }
 
